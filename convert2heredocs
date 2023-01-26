@@ -1,0 +1,60 @@
+#! /bin/env python3
+
+import argparse
+import os
+
+def get_files(path: str) -> list:
+    files = list()
+    for dpath, dnames, fnames in os.walk(path):
+        for i, fname in enumerate([os.path.join(dpath, fname) for fname in fnames]):
+           files.append(fname)
+
+    return files
+
+
+def get_folder_paths(files_list: list) -> set:
+    mkdir = set()
+    for filename in files_list:
+        mkdir.add(os.path.dirname(filename))
+
+    return mkdir
+
+
+def generate_heredoc(filename: str) -> str:
+    eof = "DOCUMENT-EOF"
+    heredoc = f"cat > {filename} <<{eof}\n"
+    with open(filename, 'r') as file:
+        heredoc += file.read()
+    heredoc += f"{eof}"
+    return heredoc
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Convert all files in specific path to heredoc output")
+    parser.add_argument("path")
+    parser.add_argument("-o", "--output", help="Output on file", type=str, default=None)
+    args = parser.parse_args()
+
+    content = ""
+    target_dir = args.path
+    if not os.path.exists(target_dir):
+        print("The target directory doesn't exist")
+        raise SystemExit(1)
+
+    # Get list of files and Get path to create mkdir
+    files_list = get_files(target_dir)
+    mkdir_set = get_folder_paths(files_list)
+
+    # Print mkdir
+    for folder in mkdir_set:
+        content += f"mkdir -p {folder}\n"
+
+    # Generate Heredoc file and print output
+    for file in files_list:
+        content += f"\n\n\n{generate_heredoc(file)}"
+
+    if args.output:
+        with open(args.output, 'w') as output_file:
+            output_file.write(content)
+    else:
+        print(content)
